@@ -1,0 +1,3 @@
+DATABASE = {
+    'db': "sub.db"
+}
