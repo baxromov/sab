@@ -1,6 +1,15 @@
 # SAB
 Student absent bot via google sheets
 
+First of all, you should clone this project:
+
+```shell-script
+
+git clone https://github.com/baxromov/sab.git
+
+```
+
+
 Create venv:
 
 ```shell-script
