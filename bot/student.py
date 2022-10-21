@@ -6,7 +6,6 @@ logger = telebot.logger
 telebot.logger.setLevel(logging.DEBUG)
 token = "5684210743:AAF-xPETRw4fWxM5lheaFTUGTihbXJVUaN4"
 
-
 bot = telebot.TeleBot(token)
 
 data = dict()
@@ -89,6 +88,7 @@ def get_gender(message):
            f"{s}"
     bot.send_message(message.chat.id, text)
 
+
 bot.polling()
 
 """
@@ -96,8 +96,3 @@ bot.polling()
 
 2. Webhook
 """
-
-
-
-
-
