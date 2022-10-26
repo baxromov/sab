@@ -1,96 +1,108 @@
+import datetime
+import time
+
 import telebot
 import logging
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, ReplyKeyboardMarkup, \
+    KeyboardButton
+from geopy.geocoders import Nominatim
 
 logger = telebot.logger
 telebot.logger.setLevel(logging.DEBUG)
-token = "5684210743:AAF-xPETRw4fWxM5lheaFTUGTihbXJVUaN4"
+token = "5695762826:AAGO7piM-pxAQem3KVpfOBja2tRQKs4i8dE"
 
 bot = telebot.TeleBot(token)
 
-data = dict()
+dictionary = {}
 
 
 @bot.message_handler(['start'])
 def start(message):
-    text = f"Assalomu alaykum, {message.chat.first_name} " \
-           f"{message.chat.last_name} " \
-           f"{message.chat.username}\n\n" \
-           f"Iltimos ismingisni kiriting!!! 👀"
+    text = f"Assalomu alekum, {message.chat.first_name}"
     bot.send_message(message.chat.id, text)
-    logger.info("Xabar yuborildi")
+    bot.send_message(message.chat.id, "Iltimos ismingizni kiriting!!!")
+    logger.info("Sent")
     bot.register_next_step_handler(message, get_first_name)
-    # get_profession(message)
 
 
 def get_first_name(message):
     first_name = message.text
-    data['Ismi'] = first_name
-    text = f"Raxmat {first_name}!!!\n\n\n" \
-           f"Familyangizni kiriting 👀"
-
-    bot.send_message(message.chat.id, text)
+    dictionary['Ism'] = first_name
+    bot.send_message(message.chat.id, "Iltimos familyangizni kiriting!!!")
     bot.register_next_step_handler(message, get_last_name)
 
 
 def get_last_name(message):
     last_name = message.text
-    data['Familiya'] = last_name
-    text = f"Raxmat {last_name}!!!\n\n\n" \
-           f"Tug'ilgan kunizni kiriting 👀 (24.05.2003)"
-    bot.send_message(message.chat.id, text)
-    bot.register_next_step_handler(message, get_birth_data)
-
-
-def get_birth_data(message):
-    birth_date = message.text
-    data["Tug'ilgan kun"] = birth_date
-    text = f"Raxmat {birth_date}!!!\n\n\n" \
-           f"Manzilingizni kiriting 👀"
-    bot.send_message(message.chat.id, text)
-    bot.register_next_step_handler(message, get_address)
-
-
-def get_address(message):
-    address = message.text
-    data["Manzil"] = address
-    text = f"Raxmat {address}!!!\n\n\n" \
-           f"Kasbingizni kiriting 👀"
-    bot.send_message(message.chat.id, text)
-    bot.register_next_step_handler(message, get_profession)
-
-
-def get_profession(message):
-    address = message.text
-    data["Kasbi"] = address
-    text = f"Raxmat {address}!!!\n\n\n" \
-           f"Jinsigizni kiriting"
+    dictionary['Familya'] = last_name
+    bot.send_message(message.chat.id, "Iltimos tug'ilgan kuningizni kiriting")
+    day = 1
+    month = 1
+    year = datetime.date.today().strftime("%Y")
     ikm = InlineKeyboardMarkup()
-    ikm.add(
-        InlineKeyboardButton("Erkak", callback_data="male"),
-        InlineKeyboardButton("Ayol", callback_data='female'))
-
-    bot.send_message(message.chat.id, text, reply_markup=ikm)
+    ikm.add(InlineKeyboardButton("Kun +1", callback_data='kun+'), InlineKeyboardButton("Oy +1", callback_data='oy+'),
+            InlineKeyboardButton("Yil +1", callback_data="yil+"))
+    ikm.add(InlineKeyboardButton("Kun -1", callback_data='kun-'), InlineKeyboardButton("Oy -1", callback_data='oy-'),
+            InlineKeyboardButton("Yil -1", callback_data="yil-")
+            )
+    a = bot.send_message(message.chat.id, text=f"Kun: {day}  Oy: {month}  Yil: {year}", reply_markup=ikm)
+    bot.register_next_step_handler(message, get_birth_date)
 
 
 @bot.callback_query_handler(func=lambda call: True)
-def data_xyz(call):
-    data["Jinsi"] = "Erkak" if call.data == "male" else "Ayol"
-    bot.send_message(call.message.chat.id, "Correct")
-    get_gender(call.message)
+def get_birth_date(call):
+    birth = call.data
+    dictionary["Tug'ilgan kun"] = birth
+    keyboard = ReplyKeyboardMarkup()
+    button_phone = KeyboardButton(text="Telefon raqam 📞", request_contact=True)
+    keyboard.add(button_phone)
+    bot.send_message(call.message.chat.id, "Iltimos telefon raqamingizni yuborish uchun knopkani bosing!!!",
+                     reply_markup=keyboard)
 
 
-def get_gender(message):
-    s = ''
-    for k, v in data.items():
-        s += k + " " + v + "\n"
-    text = f"Raxmat\n\n" \
-           f"{s}"
+@bot.message_handler(content_types=['contact'])
+def contact(message):
+    if message.contact is not None:
+        remove = ReplyKeyboardRemove()
+        dictionary['Telefon raqam'] = message.contact.phone_number
+        bot.register_next_step_handler(message, get_address)
+        bot.send_message(message.chat.id, "Iltimos addressingizni yuboring",
+                         reply_markup=remove)
+        keyboard = ReplyKeyboardMarkup()
+        button_address = KeyboardButton(text="Lokatsiya 🗺", request_location=True)
+        keyboard.add(button_address)
+        bot.send_message(message.chat.id, "Yuborish uchun knopkani bosing!!!!", reply_markup=keyboard)
+
+
+@bot.message_handler(content_types=['location'])
+def get_address(message):
+    location = [message.location.latitude, message.location.longitude]
+    geoLoc = Nominatim(user_agent="GetLoc")
+    locname = geoLoc.reverse(f"{location[0]}, {location[1]}")
+    dictionary['Address'] = locname
+    ikm = InlineKeyboardMarkup()
+    ikm.add(InlineKeyboardButton("Erkak", callback_data='male'), InlineKeyboardButton("Ayol", callback_data='female'))
+    bot.send_message(message.chat.id, "Iltimos jinsingizni tanlang!!!", reply_markup=ikm)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    dictionary['Jins'] = 'Erkak' if call.data == 'male' else 'Ayol'
+    remove = ReplyKeyboardRemove()
+    bot.send_message(call.message.chat.id, "Iltimos kasbingizni kiriting!!!", reply_markup=remove)
+    bot.register_next_step_handler(call.message, get_proffesion)
+
+
+def get_proffesion(message):
+    prof = message.text
+    dictionary['Kasb'] = prof
+    text = ""
+    for key, value in dictionary.items():
+        text += f"{key}: {value}\n"
     bot.send_message(message.chat.id, text)
 
 
 bot.polling()
-
 """
 1. Polling
 
